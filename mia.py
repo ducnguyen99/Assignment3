@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 import numpy as np
 import random
-from sklearn.metrics import classification_report, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # === Simple CNN ===
 class SimpleCNN(nn.Module):
@@ -34,17 +34,25 @@ class AttackModel(nn.Module):
         return self.fc2(x)
 
 # === Training Functions ===
-def train_model(model, train_loader, epochs=5):
+def train_model(model, train_loader, epochs=5, normalization=False):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
     model.train()
+    
+    mean = 0.5
+    std = 0.5
+    
     for epoch in range(epochs):
         for data, target in train_loader:
+            if normalization:
+                data = (data - mean) / std  # Normalize
+            
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
+
 
 def get_confidence_vectors(model, data_loader):
     model.eval()
@@ -91,16 +99,16 @@ target_test_loader = DataLoader(target_test_set, batch_size=64, shuffle=False)
 
 # Train the target model
 # target_model = SimpleCNN()
-# train_model(target_model, target_train_loader, epochs=10)
+# train_model(target_model, target_train_loader, epochs=5, normalization=True)
 # torch.save(target_model.state_dict(), "mia.pt")
 
 target_model = SimpleCNN()
 target_model.load_state_dict(torch.load('./mia.pt'))
 
 # === Step 1: Generate synthetic shadow data using random inputs ===
-num_shadow_models = 3
-shadow_train_size = 4000
-shadow_test_size = 4000
+num_shadow_models = 5
+shadow_train_size = 5000
+shadow_test_size = 5000
 attack_X = []
 attack_Y = []
 
@@ -109,11 +117,11 @@ for _ in range(num_shadow_models):
     synthetic_inputs = generate_random_images(10000)
     
     # Query target model to collect high-confidence samples
-    shadow_train_imgs, shadow_train_labels = select_high_confidence_samples(target_model, synthetic_inputs, threshold=0.9, max_samples=shadow_train_size)
+    shadow_train_imgs, shadow_train_labels = select_high_confidence_samples(target_model, synthetic_inputs, threshold=0.85, max_samples=shadow_train_size)
     
     # Simulate separate shadow test set
     synthetic_inputs = generate_random_images(10000)
-    shadow_test_imgs, shadow_test_labels = select_high_confidence_samples(target_model, synthetic_inputs, threshold=0.9, max_samples=shadow_test_size)
+    shadow_test_imgs, shadow_test_labels = select_high_confidence_samples(target_model, synthetic_inputs, threshold=0.85, max_samples=shadow_test_size)
     
     # Prepare shadow datasets
     shadow_train_dataset = torch.utils.data.TensorDataset(shadow_train_imgs, shadow_train_labels)
@@ -123,7 +131,7 @@ for _ in range(num_shadow_models):
     
     # Train shadow model
     shadow_model = SimpleCNN()
-    train_model(shadow_model, shadow_train_loader, epochs=10)
+    train_model(shadow_model, shadow_train_loader)
     
     # Collect softmax outputs
     in_conf = get_confidence_vectors(shadow_model, shadow_train_loader)
