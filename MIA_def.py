@@ -34,7 +34,7 @@ class AttackModel(nn.Module):
         return self.fc2(x)
 
 
-# === Training Functions ===
+# === Train any given model with optional inputs ===
 def train_model(model, train_loader, epochs=5, normalization=False, smothing=False):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = nn.CrossEntropyLoss()
@@ -103,10 +103,6 @@ target_test_loader = DataLoader(target_test_set, batch_size=64, shuffle=False)
 # Train the target model
 target_model = SimpleCNN()
 train_model(target_model, target_train_loader, epochs=5, normalization=True, smothing=False)
-# torch.save(target_model.state_dict(), "mia.pt")
-
-# target_model = SimpleCNN()
-# target_model.load_state_dict(torch.load('./mia.pt'))
 
 # === Step 1: Generate synthetic shadow data using random inputs ===
 num_shadow_models = 5

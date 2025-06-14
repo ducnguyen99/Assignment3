@@ -85,18 +85,25 @@ test_loader = torch.utils.data.DataLoader(dataset2, batch_size=64, shuffle=True)
 # Step 1: Collect 100 queries using batch_size=1
 train_loader = torch.utils.data.DataLoader(dataset1, batch_size=1, shuffle=True)
 
+# Initialize lists to store queried data and corresponding model responses
 query_data = []
 query_response = []
-num_query = 100
+num_query = 100 # Number of query 
+
+# Loop through the training data loader
 for i, (data, _) in enumerate(train_loader):
-    with torch.no_grad():
-        response = model(data)
+    with torch.no_grad():  # Disable gradient computation for inference
+        response = model(data)  # Get model output for the current batch
+    
+    # Store input data and model's output
     query_data.append(data)
     query_response.append(response)
     
+    # Stop after collecting 'num_query' batches
     if i + 1 >= num_query:
         break
 
+# Repeat the collected queries and responses 100 times to enlarge the dataset
 query_data = query_data * 100
 query_response = query_response * 100
 
